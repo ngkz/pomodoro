@@ -1,0 +1,44 @@
+#!/bin/bash
+
+POMODORO_LENGTH=$((25 * 60))
+SHORT_BREAK_LENGTH=$((5 * 60))
+LONG_BREAK_LENGTH=$((15 * 60))
+
+PLAYER=paplay
+BEEP=/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga
+NOTIFY=notify-send
+
+POMODORO_COUNT=1
+
+lock() {
+    local LOCK_END_TIME=$(( $(date +%s) + $1 ))
+    gnome-screensaver-command --lock
+    while [ "$(date +%s)" -le $LOCK_END_TIME ]; do
+        if LC_MESSAGES=C gnome-screensaver-command --query | grep inactive >/dev/null; then
+            gnome-screensaver-command --lock
+        fi
+        sleep 1
+    done
+    "$PLAYER" "$BEEP" &
+    while LC_MESSAGES=C gnome-screensaver-command --query | grep -v inactive >/dev/null; do
+        sleep 1
+    done
+}
+
+while :; do
+    echo "[$(date)] Pomodoro $POMODORO_COUNT"
+    "$NOTIFY" "Pomodoro $POMODORO_COUNT"
+
+    sleep $POMODORO_LENGTH
+    "$PLAYER" "$BEEP" &
+
+    if [ $(( $POMODORO_COUNT % 4 )) != 0 ]; then
+        echo "[$(date)] short break"
+        lock $SHORT_BREAK_LENGTH
+    else
+        echo "[$(date)] long break"
+        lock $LONG_BREAK_LENGTH
+    fi
+
+    POMODORO_COUNT=$(( $POMODORO_COUNT + 1 ))
+done
